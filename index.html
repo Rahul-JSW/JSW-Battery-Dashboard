@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Battery Performance Design Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f1efe8;
+  --border: rgba(0,0,0,0.1);
+  --border2: rgba(0,0,0,0.22);
+  --text: #1a1a18;
+  --muted: #5f5e5a;
+  --hint: #888780;
+  --accent: #1D9E75;
+  --accent-light: #E1F5EE;
+  --accent-mid: #0F6E56;
+  --accent2: #378ADD;
+  --accent2-light: #E6F1FB;
+  --amber: #BA7517;
+  --amber-light: #FAEEDA;
+  --red: #A32D2D;
+  --red-light: #FCEBEB;
+  --purple: #534AB7;
+  --purple-light: #EEEDFE;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+body { font-family: var(--font-head); background: var(--bg); color: var(--text); min-height: 100vh; }
+.wrap { max-width: 1100px; margin: 0 auto; background: var(--surface); min-height: 100vh; }
+
+/* Header */
+.header {
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: flex-start; gap: 1.5rem;
+}
+.header-icon {
+  width: 52px; height: 52px; background: var(--accent);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.header-icon svg { width: 28px; height: 28px; }
+.header-text h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
+.header-text p { font-family: var(--font-mono); font-size: 11px; color: var(--hint); margin-top: 3px; letter-spacing: 0.05em; text-transform: uppercase; }
+.header-badge {
+  margin-left: auto; flex-shrink: 0;
+  background: var(--accent-light); color: var(--accent-mid);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  padding: 4px 10px; border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 4px;
+}
+
+/* Tabs */
+.tab-nav {
+  display: flex; padding: 0 2rem;
+  border-bottom: 0.5px solid var(--border); gap: 0; overflow-x: auto;
+}
+.tab-btn {
+  font-family: var(--font-head); font-size: 13px; font-weight: 500;
+  color: var(--muted); background: none; border: none;
+  border-bottom: 2px solid transparent;
+  padding: 14px 20px 12px; cursor: pointer; white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex; align-items: center; gap: 7px;
+  position: relative; top: 0.5px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.5; flex-shrink: 0; }
+.tab-btn.active .tab-dot { opacity: 1; }
+
+/* Panels */
+.tab-panel { display: none; padding: 2rem; }
+.tab-panel.active { display: block; }
+
+/* Overview */
+.hero { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+.hero-left { display: flex; flex-direction: column; gap: 1rem; }
+.hero-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 500; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; }
+.hero-title { font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -0.5px; }
+.hero-desc { font-size: 14px; color: var(--muted); line-height: 1.7; font-weight: 400; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 0.5rem; }
+.btn-primary {
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 18px; font-family: var(--font-head); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-secondary {
+  background: none; color: var(--text); border: 0.5px solid var(--border2);
+  border-radius: 8px; padding: 9px 18px; font-family: var(--font-head); font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.hero-right {
+  background: var(--surface2); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px;
+}
+.stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--hint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.stat-value { font-size: 20px; font-weight: 700; }
+.stat-value span { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+.stat-trend { font-family: var(--font-mono); font-size: 10px; color: var(--accent); margin-top: 2px; }
+
+.modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+.module-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem; cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s; position: relative; overflow: hidden;
+}
+.module-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.module-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.module-card.green::before { background: var(--accent); }
+.module-card.blue::before { background: var(--accent2); }
+.module-card.amber::before { background: var(--amber); }
+.module-num { font-family: var(--font-mono); font-size: 10px; color: var(--hint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.module-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.module-icon.green { background: var(--accent-light); }
+.module-icon.blue  { background: var(--accent2-light); }
+.module-icon.amber { background: var(--amber-light); }
+.module-icon svg { width: 18px; height: 18px; }
+.module-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+.module-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.module-link { margin-top: 14px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.module-link.green { color: var(--accent); }
+.module-link.blue  { color: var(--accent2); }
+.module-link.amber { color: var(--amber); }
+
+.info-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  padding: 1.25rem; background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+}
+.info-item { display: flex; align-items: flex-start; gap: 10px; }
+.info-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.info-dot.green { background: var(--accent); }
+.info-dot.blue  { background: var(--accent2); }
+.info-dot.amber { background: var(--amber); }
+.info-item-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.info-item-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* Cell Evolution */
+.section-tag { font-family: var(--font-mono); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; }
+.section-desc { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 700px; margin-bottom: 1.5rem; }
+
+.filter-bar {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 1.25rem; padding: 1rem 1.25rem;
+  background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-md);
+}
+.filter-label { font-family: var(--font-mono); font-size: 10px; color: var(--hint); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  padding: 4px 12px; border-radius: 20px; cursor: pointer;
+  border: 0.5px solid var(--border2); background: var(--surface); color: var(--muted);
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.active { background: var(--accent-light); color: var(--accent-mid); border-color: var(--accent); }
+.search-box {
+  margin-left: auto; font-family: var(--font-mono); font-size: 12px;
+  padding: 6px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--text); outline: none; width: 200px;
+}
+.search-box:focus { border-color: var(--accent); }
+
+.table-wrapper { overflow-x: auto; border: 0.5px solid var(--border); border-radius: var(--radius-lg); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--surface2); border-bottom: 0.5px solid var(--border); }
+th {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--hint); text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 10px 12px; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
+}
+th:hover { color: var(--text); }
+th.sorted { color: var(--accent); }
+.sort-icon { margin-left: 3px; opacity: 0.4; }
+th.sorted .sort-icon { opacity: 1; }
+td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafaf8; }
+.chem-name { font-weight: 600; font-size: 13px; }
+.chem-formula { font-family: var(--font-mono); font-size: 10px; color: var(--hint); margin-top: 2px; }
+.era-text { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.volt-text { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.density-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.density-bar-bg { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; min-width: 50px; }
+.density-bar { height: 4px; border-radius: 2px; }
+.density-val { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 72px; }
+.maturity-badge {
+  display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+}
+.mat-mature   { background: var(--accent-light);  color: var(--accent-mid); }
+.mat-legacy   { background: var(--surface2);       color: var(--muted); border: 0.5px solid var(--border2); }
+.mat-niche    { background: var(--accent2-light);  color: #0C447C; }
+.mat-scaling  { background: var(--amber-light);    color: #633806; }
+.mat-emerging { background: var(--purple-light);   color: #3C3489; }
+.mat-early    { background: #E1F5EE;               color: #085041; }
+.mat-precom   { background: var(--amber-light);    color: #412402; }
+.mat-rd       { background: var(--red-light);      color: var(--red); }
+.adv-text  { font-size: 11px; color: var(--text); max-width: 160px; display: block; }
+.chal-text { font-size: 11px; color: var(--muted); max-width: 160px; display: block; }
+.table-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 1rem; border-top: 0.5px solid var(--border); background: var(--surface2);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.row-count { font-family: var(--font-mono); font-size: 11px; color: var(--hint); }
+
+/* Placeholder */
+.placeholder {
+  background: var(--surface2); border: 0.5px dashed var(--border2);
+  border-radius: var(--radius-lg); padding: 3rem 2rem; text-align: center;
+}
+.placeholder-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
+}
+.placeholder-icon svg { width: 24px; height: 24px; }
+.placeholder h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.placeholder p { font-size: 13px; color: var(--muted); max-width: 360px; margin: 0 auto; line-height: 1.6; }
+.placeholder-tag {
+  display: inline-block; margin-top: 16px;
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; padding: 4px 12px; border-radius: 20px; font-weight: 500;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="9" width="20" height="12" rx="2" stroke="white" stroke-width="1.5"/>
+        <path d="M23 12.5h2v3h-2" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M9 15l2.5-4L13.5 15l2.5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Battery Performance Design Suite</h1>
+      <p>Battery Software Engineering · Internal Tool · v1.0</p>
+    </div>
+    <div class="header-badge">Live</div>
+  </div>
+
+  <!-- Tab Nav -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab(0)"><span class="tab-dot"></span>Overview</button>
+    <button class="tab-btn" onclick="switchTab(1)"><span class="tab-dot"></span>Cell Evolution</button>
+    <button class="tab-btn" onclick="switchTab(2)"><span class="tab-dot"></span>UBC &amp; UBE Estimation</button>
+    <button class="tab-btn" onclick="switchTab(3)"><span class="tab-dot"></span>Charging Estimation</button>
+  </nav>
+
+  <!-- ══ OVERVIEW ══ -->
+  <div class="tab-panel active" id="panel-0">
+    <div class="hero">
+      <div class="hero-left">
+        <p class="hero-tag">Battery Engineering · Design Suite</p>
+        <h2 class="hero-title">Predict. Simulate.<br>Optimise.</h2>
+        <p class="hero-desc">
+          A unified engineering platform for battery software teams — enabling
+          rapid analysis of cell degradation, vehicle range prediction, and
+          charging behaviour modelling across diverse drive cycles and operating conditions.
+        </p>
+        <p class="hero-desc">
+          Built for design engineers who need fast, reliable simulation outputs
+          without leaving their workflow. Input parameters, iterate in real time,
+          and export results directly to your reports.
+        </p>
+        <div class="hero-actions">
+          <button class="btn-primary" onclick="switchTab(1)">Get Started</button>
+          <button class="btn-secondary" onclick="switchTab(1)">View Cell Data →</button>
+        </div>
+      </div>
+      <div class="hero-right">
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:0.06em;">Quick metrics</p>
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-label">Modules</div>
+            <div class="stat-value">3</div>
+            <div class="stat-trend">↑ Active tools</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">SoH Range</div>
+            <div class="stat-value">0–100<span>%</span></div>
+            <div class="stat-trend">Full coverage</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-label">Temp range</div>
+            <div class="stat-value">−40–85<span>°C</span></div>
+            <div class="stat-trend">All climates</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Chemistries</div>
+            <div class="stat-value">14</div>
+            <div class="stat-trend">Catalogued</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modules-grid">
+      <div class="module-card green" onclick="switchTab(1)">
+        <div class="module-num">Module 01</div>
+        <div class="module-icon green">
+          <svg viewBox="0 0 18 18" fill="none"><path d="M2 14L6 9l3 3 3-5 4 6" stroke="#0F6E56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="module-title">Cell Evolution</div>
+        <div class="module-desc">Explore battery chemistry evolution — from Lead-Acid to Solid-State. Compare energy density, cycle life, maturity, and performance trade-offs across 14 chemistries.</div>
+        <div class="module-link green">Open module →</div>
+      </div>
+      <div class="module-card blue" onclick="switchTab(2)">
+        <div class="module-num">Module 02</div>
+        <div class="module-icon blue">
+          <svg viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="4" height="6" rx="1" fill="#185FA5" opacity="0.3"/><rect x="7" y="6" width="4" height="10" rx="1" fill="#185FA5" opacity="0.6"/><rect x="12" y="2" width="4" height="14" rx="1" fill="#185FA5"/></svg>
+        </div>
+        <div class="module-title">UBC &amp; UBE Estimation</div>
+        <div class="module-desc">Monte Carlo simulation of Usable Battery Capacity and Energy, accounting for cell spread, SoC variation, and multi-pack voltage balancing losses.</div>
+        <div class="module-link blue">Open module →</div>
+      </div>
+      <div class="module-card amber" onclick="switchTab(3)">
+        <div class="module-num">Module 03</div>
+        <div class="module-icon amber">
+          <svg viewBox="0 0 18 18" fill="none"><path d="M4 16V10M9 16V6M14 16V2" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="module-title">Charging Estimation</div>
+        <div class="module-desc">Simulate CC-CV and multi-stage charging protocols. Predict time-to-charge, thermal rise, and cell stress across charger power levels and ambient temperatures.</div>
+        <div class="module-link amber">Open module →</div>
+      </div>
+    </div>
+
+    <div class="info-strip">
+      <div class="info-item">
+        <span class="info-dot green"></span>
+        <div>
+          <div class="info-item-title">Physics-based models</div>
+          <div class="info-item-desc">Underpinned by electrochemical and thermal models calibrated to real cell data.</div>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-dot blue"></span>
+        <div>
+          <div class="info-item-title">Configurable inputs</div>
+          <div class="info-item-desc">All parameters editable — cell chemistry, pack geometry, thermal environment.</div>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-dot amber"></span>
+        <div>
+          <div class="info-item-title">Export ready</div>
+          <div class="info-item-desc">Results exportable as CSV or PDF for integration into design reports.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CELL EVOLUTION ══ -->
+  <div class="tab-panel" id="panel-1">
+    <p class="section-tag">Module 01 · Cell Evolution</p>
+    <h2 class="section-title">Battery Chemistry Timeline</h2>
+    <p class="section-desc">
+      A comprehensive reference covering the evolution of electrochemical cell technologies —
+      from early Lead-Acid cells to next-generation Solid-State and Li-Air systems.
+      Compare energy density, cycle life, maturity, and performance trade-offs across 14 chemistries.
+      Click any column header to sort. Use the filter chips or search to narrow results.
+    </p>
+
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <div class="filter-chips" id="maturityFilters">
+        <span class="chip active" data-filter="all">All</span>
+        <span class="chip" data-filter="Mature">Mature</span>
+        <span class="chip" data-filter="Legacy">Legacy</span>
+        <span class="chip" data-filter="Niche">Niche</span>
+        <span class="chip" data-filter="Scaling">Scaling</span>
+        <span class="chip" data-filter="Emerging">Emerging</span>
+        <span class="chip" data-filter="Early commercial">Early</span>
+        <span class="chip" data-filter="Pre-commercial">Pre-com</span>
+        <span class="chip" data-filter="R&D">R&amp;D</span>
+      </div>
+      <input class="search-box" type="text" placeholder="Search chemistry…" id="searchBox" oninput="applyFilters()"/>
+    </div>
+
+    <div class="table-wrapper">
+      <table id="chemTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">Chemistry<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(1)">Era<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(2)">Voltage (V)<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(3)">Grav. Energy (Wh/kg)<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(4)">Vol. Energy (Wh/L)<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(5)">Cycle Life (80% SoH)<span class="sort-icon">↕</span></th>
+            <th onclick="sortTable(6)">Maturity<span class="sort-icon">↕</span></th>
+            <th>Key Advantages</th>
+            <th>Challenges</th>
+          </tr>
+        </thead>
+        <tbody id="chemBody"></tbody>
+      </table>
+      <div class="table-footer">
+        <span class="row-count" id="rowCount">14 chemistries shown</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--hint);">Click column headers to sort</span>
+      </div>
+    </div>
+
+    <!-- ══ SCATTER PLOT ══ -->
+    <div style="margin-top:2rem;">
+      <div style="margin-bottom:1rem;">
+        <p class="section-tag" style="margin-bottom:4px;">Energy Density Comparison</p>
+        <h3 style="font-size:16px;font-weight:600;letter-spacing:-0.2px;margin-bottom:4px;">Gravimetric vs Volumetric Energy Density</h3>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Each bubble represents a chemistry — bubble size encodes cycle life. Hover over a point to see details. Ranges are shown as crosshairs.</p>
+      </div>
+
+      <!-- Legend -->
+      <div id="chartLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;"></div>
+
+      <!-- Canvas container -->
+      <div style="position:relative;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.25rem 1rem;">
+        <canvas id="ragoneChart" style="width:100%;"></canvas>
+        <!-- Tooltip -->
+        <div id="chartTooltip" style="
+          display:none;position:absolute;pointer-events:none;
+          background:var(--surface);border:0.5px solid var(--border2);
+          border-radius:var(--radius-md);padding:10px 14px;
+          font-family:var(--font-mono);font-size:11px;color:var(--text);
+          box-shadow:0 4px 16px rgba(0,0,0,0.08);min-width:180px;z-index:10;
+        "></div>
+      </div>
+    </div>
+
+    <!-- ══ OCV PLOT ══ -->
+    <div style="margin-top:2.5rem;">
+      <div style="margin-bottom:1rem;">
+        <p class="section-tag" style="margin-bottom:4px;">Electrochemical Characterisation</p>
+        <h3 style="font-size:16px;font-weight:600;letter-spacing:-0.2px;margin-bottom:4px;">SoC vs Open Circuit Voltage (OCV)</h3>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">OCV-SoC curves for 9 chemistries. Toggle chemistries using the legend. Hover the chart to read exact values at any SoC.</p>
+      </div>
+
+      <!-- Toggle legend -->
+      <div id="ocvLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;"></div>
+
+      <!-- Chart + tooltip -->
+      <div style="position:relative;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.25rem 1rem;">
+        <canvas id="ocvChart" style="width:100%;"></canvas>
+        <div id="ocvTooltip" style="
+          display:none;position:absolute;pointer-events:none;
+          background:var(--surface);border:0.5px solid var(--border2);
+          border-radius:var(--radius-md);padding:10px 14px;
+          font-family:var(--font-mono);font-size:11px;color:var(--text);
+          box-shadow:0 4px 16px rgba(0,0,0,0.08);min-width:200px;z-index:10;
+        "></div>
+        <!-- Crosshair line -->
+        <canvas id="ocvOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ UBC & UBE ESTIMATION ══ -->
+  <div class="tab-panel" id="panel-2">
+    <p class="section-tag">Module 02 · UBC &amp; UBE Estimation</p>
+    <h2 class="section-title">Usable Battery Capacity &amp; Energy</h2>
+    <p class="section-desc">
+      Monte Carlo simulation of pack-level Usable Battery Capacity (UBC) and Usable Battery Energy (UBE),
+      accounting for cell-to-cell capacity spread, SoC spread, and multi-pack voltage balancing losses.
+    </p>
+
+    <!-- ── Method Description ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+
+      <!-- What is UBC/UBE -->
+      <div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Definitions</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">What are UBC and UBE?</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px;">
+          <strong style="color:var(--text);">UBC (Usable Battery Capacity)</strong> is the net Ah a battery pack can deliver between its
+          high-SoC and low-SoC limits, after accounting for cell-level imbalance and voltage-balancing
+          constraints imposed by series connection. It is always less than the simple
+          <em>nominal capacity × SoC window</em> estimate.
+        </p>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7;">
+          <strong style="color:var(--text);">UBE (Usable Battery Energy)</strong> converts UBC into Wh/kWh by multiplying by the
+          pack voltage (series cells × average OCV at 50% SoC × parallel strings × number of packs).
+          UBE is what ultimately determines vehicle range or system runtime.
+        </p>
+      </div>
+
+      <!-- Key loss mechanisms -->
+      <div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Loss Mechanisms</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Why is True UBC &lt; Traditional UBC?</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:20px;height:20px;border-radius:5px;background:var(--accent-light);color:var(--accent-mid);font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</span>
+            <div><div style="font-size:12px;font-weight:600;margin-bottom:2px;">Capacity spread</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Series cells are limited by the weakest cell; manufacturing variation means no pack reaches its average capacity.</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:20px;height:20px;border-radius:5px;background:var(--accent2-light);color:#0C447C;font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</span>
+            <div><div style="font-size:12px;font-weight:600;margin-bottom:2px;">SoC spread</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Cells within a pack start at slightly different SoC values; the top-of-charge equalisation removes usable Ah from higher-SoC cells.</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:20px;height:20px;border-radius:5px;background:var(--amber-light);color:#633806;font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</span>
+            <div><div style="font-size:12px;font-weight:600;margin-bottom:2px;">Multi-pack voltage balancing</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Packs connected in parallel must reach the same terminal voltage; the weakest pack forces others to stop earlier, reducing usable capacity further.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Simulator iframe ── -->
+    <div style="margin-bottom:0.75rem;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Interactive Simulator</div>
+      <h3 style="font-size:15px;font-weight:600;letter-spacing:-0.2px;margin-bottom:2px;">Generic Battery UBC Simulator</h3>
+      <p style="font-size:12px;color:var(--muted);">Configure pack parameters, SoC and capacity distributions, and OCV curves below, then click <strong>Run Simulation</strong>.</p>
+    </div>
+    <div style="border:0.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+      <iframe id="ubcFrame" src="ubc_simulator.html" style="width:100%;height:820px;border:none;display:block;"></iframe>
+    </div>
+  </div>
+
+  <!-- ══ CHARGING ESTIMATION ══ -->
+  <div class="tab-panel" id="panel-3">
+    <div class="placeholder">
+      <div class="placeholder-icon" style="background:var(--amber-light);">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V14M10 20V8M15 20V4M20 20v-8" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <h3>Charging Estimation</h3>
+      <p>Simulate CC-CV charging scenarios. Input initial SoC, charger power, and thermal limits to predict charge time, temperature rise, and degradation stress per session.</p>
+      <span class="placeholder-tag" style="background:var(--amber-light);color:#633806;">Coming soon — Module 03</span>
+    </div>
+  </div>
+
+</div>
+
+  <!-- Footer -->
+  <div style="border-top:0.5px solid var(--border);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:space-between;background:var(--surface2);">
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--hint);letter-spacing:0.05em;">© 2025 Battery Performance Design Suite</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--hint);letter-spacing:0.04em;">Designed &amp; maintained by <span style="color:var(--accent-mid);font-weight:500;">Rahul Kumar Tiwari</span></span>
+  </div>
+
+<script>
+const chemData = [
+  { name:"Lead-Acid",            formula:"PbSO\u2084",              era:"1859\u2013Present",  eraSort:1859, voltage:"2.0",     voltSort:2.0,  gravLow:30,  gravHigh:50,   volLow:60,  volHigh:110,  cycleLow:300,   cycleHigh:500,   maturity:"Mature",          adv:"Very low cost; robust",                       chal:"Heavy; very low energy" },
+  { name:"Ni-Cd",                formula:"NiCd",                    era:"1950s\u20132000s",   eraSort:1950, voltage:"1.2",     voltSort:1.2,  gravLow:40,  gravHigh:60,   volLow:100, volHigh:150,  cycleLow:1000,  cycleHigh:1500,  maturity:"Legacy",          adv:"Long life; reliable",                         chal:"Toxic; memory effect" },
+  { name:"Ni-MH",                formula:"NiMH",                    era:"1990s\u20132010s",   eraSort:1990, voltage:"1.2",     voltSort:1.2,  gravLow:60,  gravHigh:120,  volLow:140, volHigh:300,  cycleLow:500,   cycleHigh:1000,  maturity:"Mature",          adv:"Safer than Ni-Cd",                            chal:"Lower energy vs Li-ion" },
+  { name:"LCO",                  formula:"LiCoO\u2082",             era:"1991\u2013Present",  eraSort:1991, voltage:"3.6\u20133.7", voltSort:3.65, gravLow:150, gravHigh:200, volLow:400, volHigh:600,  cycleLow:500,   cycleHigh:1000,  maturity:"Mature",          adv:"High energy density",                         chal:"Thermal instability" },
+  { name:"LFP",                  formula:"LiFePO\u2084",            era:"2000s\u2013Present", eraSort:2000, voltage:"3.2\u20133.3", voltSort:3.25, gravLow:90,  gravHigh:160, volLow:220, volHigh:400,  cycleLow:2000,  cycleHigh:5000,  maturity:"Mature",          adv:"Excellent safety; long life",                 chal:"Lower energy density" },
+  { name:"LMFP",                 formula:"LiMnFePO\u2084",         era:"2022\u2013Present",  eraSort:2022, voltage:"3.6\u20133.7", voltSort:3.65, gravLow:140, gravHigh:200, volLow:350, volHigh:500,  cycleLow:1500,  cycleHigh:4000,  maturity:"Scaling",         adv:"Higher voltage than LFP; good safety",        chal:"Mn dissolution; lower conductivity" },
+  { name:"NMC",                  formula:"LiNiMnCoO\u2082",        era:"2010\u2013Present",  eraSort:2010, voltage:"3.6\u20133.7", voltSort:3.65, gravLow:150, gravHigh:250, volLow:400, volHigh:700,  cycleLow:1000,  cycleHigh:2000,  maturity:"Mature",          adv:"Balanced performance",                        chal:"Thermal management required" },
+  { name:"NCA",                  formula:"LiNiCoAlO\u2082",        era:"2010\u2013Present",  eraSort:2010, voltage:"3.6\u20133.7", voltSort:3.65, gravLow:200, gravHigh:300, volLow:500, volHigh:750,  cycleLow:1000,  cycleHigh:1500,  maturity:"Mature",          adv:"Very high energy density",                    chal:"Stability concerns" },
+  { name:"LTO",                  formula:"Li\u2084Ti\u2085O\u2081\u2082", era:"2010\u2013Present", eraSort:2010, voltage:"2.3\u20132.4", voltSort:2.35, gravLow:50, gravHigh:90, volLow:150, volHigh:250, cycleLow:5000, cycleHigh:15000, maturity:"Niche",           adv:"Ultra-long life; fast charging",              chal:"Very low energy density" },
+  { name:"High-Mn (LNMO)",       formula:"LiNi\u2093Mn\u2082\u208bO\u2084", era:"Emerging", eraSort:2023, voltage:"~4.7",    voltSort:4.7,  gravLow:180, gravHigh:240, volLow:500, volHigh:650,  cycleLow:800,   cycleHigh:1500,  maturity:"Pre-commercial",  adv:"Cobalt-free; high voltage",                   chal:"Electrolyte stability issues" },
+  { name:"Sodium-ion",           formula:"Na-ion",                  era:"2023\u2013Present",  eraSort:2023, voltage:"2.8\u20133.3", voltSort:3.05, gravLow:100, gravHigh:160, volLow:200, volHigh:400,  cycleLow:1000,  cycleHigh:3000,  maturity:"Early commercial",adv:"Low cost; abundant materials",                chal:"Lower energy density" },
+  { name:"Li\u2013Sulfur (Li-S)",formula:"Li-S",                   era:"Pre-commercial",     eraSort:2024, voltage:"~2.1",    voltSort:2.1,  gravLow:300, gravHigh:600, volLow:400, volHigh:700,  cycleLow:100,   cycleHigh:500,   maturity:"R&D",             adv:"Ultra-high energy potential",                 chal:"Poor cycle life; shuttle effect" },
+  { name:"Solid-State (Li-metal)",formula:"Li-metal",              era:"2025+",              eraSort:2025, voltage:"3.7\u20134.3", voltSort:4.0, gravLow:300, gravHigh:500, volLow:700, volHigh:1000, cycleLow:1000,  cycleHigh:3000,  maturity:"Emerging",        adv:"High safety + energy",                        chal:"Interface resistance; cost" },
+  { name:"Li\u2013Air (Li-O\u2082)",formula:"Li-O\u2082",         era:"Research",           eraSort:2026, voltage:"~2.7",    voltSort:2.7,  gravLow:500, gravHigh:1000,volLow:800, volHigh:1200, cycleLow:0,     cycleHigh:100,   maturity:"R&D",             adv:"Extreme theoretical energy",                  chal:"Highly unstable" }
+];
+
+const MAX_GRAV = 1000, MAX_VOL = 1200, MAX_CYCLE = 15000;
+const matClass = {
+  "Mature":"mat-mature","Legacy":"mat-legacy","Niche":"mat-niche","Scaling":"mat-scaling",
+  "Emerging":"mat-emerging","Early commercial":"mat-early","Pre-commercial":"mat-precom","R&D":"mat-rd"
+};
+
+function bar(low, high, max, color) {
+  const mid = (low + high) / 2;
+  const pct = Math.min(100, Math.round(mid / max * 100));
+  return `<div class="density-bar-bg"><div class="density-bar" style="width:${pct}%;background:${color}"></div></div>`;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById("chemBody");
+  tbody.innerHTML = data.map(r => {
+    const cycleStr = r.cycleHigh <= 100
+      ? `&lt;${r.cycleHigh}`
+      : `${r.cycleLow.toLocaleString()}\u2013${r.cycleHigh.toLocaleString()}`;
+    const mc = matClass[r.maturity] || "mat-legacy";
+    return `<tr>
+      <td><div class="chem-name">${r.name}</div><div class="chem-formula">${r.formula}</div></td>
+      <td><span class="era-text">${r.era}</span></td>
+      <td><span class="volt-text">${r.voltage}</span></td>
+      <td><div class="density-bar-wrap">${bar(r.gravLow,r.gravHigh,MAX_GRAV,"#1D9E75")}<span class="density-val">${r.gravLow}\u2013${r.gravHigh}</span></div></td>
+      <td><div class="density-bar-wrap">${bar(r.volLow,r.volHigh,MAX_VOL,"#378ADD")}<span class="density-val">${r.volLow}\u2013${r.volHigh}</span></div></td>
+      <td><div class="density-bar-wrap">${bar(r.cycleLow,r.cycleHigh,MAX_CYCLE,"#BA7517")}<span class="density-val">${cycleStr}</span></div></td>
+      <td><span class="maturity-badge ${mc}">${r.maturity}</span></td>
+      <td><span class="adv-text">${r.adv}</span></td>
+      <td><span class="chal-text">${r.chal}</span></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("rowCount").textContent = `${data.length} ${data.length === 1 ? "chemistry" : "chemistries"} shown`;
+}
+
+let activeFilter = "all", sortCol = -1, sortAsc = true;
+
+const sortKeys = [
+  r => r.name, r => r.eraSort, r => r.voltSort,
+  r => (r.gravLow+r.gravHigh)/2, r => (r.volLow+r.volHigh)/2,
+  r => (r.cycleLow+r.cycleHigh)/2, r => r.maturity
+];
+
+function applyFilters() {
+  const q = document.getElementById("searchBox").value.toLowerCase().trim();
+  let data = chemData.filter(r => {
+    const mf = activeFilter === "all" || r.maturity === activeFilter;
+    const sq = !q || r.name.toLowerCase().includes(q) || r.formula.toLowerCase().includes(q) || r.maturity.toLowerCase().includes(q) || r.adv.toLowerCase().includes(q);
+    return mf && sq;
+  });
+  if (sortCol >= 0) {
+    data = [...data].sort((a,b) => {
+      const va = sortKeys[sortCol](a), vb = sortKeys[sortCol](b);
+      return va < vb ? (sortAsc?-1:1) : va > vb ? (sortAsc?1:-1) : 0;
+    });
+  }
+  renderTable(data);
+}
+
+function sortTable(col) {
+  sortAsc = sortCol === col ? !sortAsc : true;
+  sortCol = col;
+  document.querySelectorAll("th").forEach((th,i) => th.classList.toggle("sorted", i === col));
+  applyFilters();
+}
+
+document.getElementById("maturityFilters").addEventListener("click", e => {
+  if (!e.target.classList.contains("chip")) return;
+  document.querySelectorAll("#maturityFilters .chip").forEach(c => c.classList.remove("active"));
+  e.target.classList.add("active");
+  activeFilter = e.target.dataset.filter;
+  applyFilters();
+});
+
+function switchTab(idx) {
+  document.querySelectorAll(".tab-btn").forEach((b,i) => b.classList.toggle("active", i === idx));
+  document.querySelectorAll(".tab-panel").forEach((p,i) => p.classList.toggle("active", i === idx));
+}
+
+renderTable(chemData);
+
+// ── Ragone Scatter Plot ──
+const matColors = {
+  "Mature":          { fill:"#1D9E75", stroke:"#0F6E56" },
+  "Legacy":          { fill:"#888780", stroke:"#5f5e5a" },
+  "Niche":           { fill:"#378ADD", stroke:"#185FA5" },
+  "Scaling":         { fill:"#EF9F27", stroke:"#BA7517" },
+  "Emerging":        { fill:"#7F77DD", stroke:"#534AB7" },
+  "Early commercial":{ fill:"#5DCAA5", stroke:"#1D9E75" },
+  "Pre-commercial":  { fill:"#FAC775", stroke:"#BA7517" },
+  "R&D":             { fill:"#E24B4A", stroke:"#A32D2D" }
+};
+
+function buildLegend() {
+  const seen = new Set();
+  const wrap = document.getElementById("chartLegend");
+  wrap.innerHTML = "";
+  chemData.forEach(r => {
+    if (seen.has(r.maturity)) return;
+    seen.add(r.maturity);
+    const c = matColors[r.maturity] || { fill:"#888", stroke:"#555" };
+    const el = document.createElement("div");
+    el.style.cssText = "display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--muted);cursor:default;";
+    el.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${c.fill};border:1.5px solid ${c.stroke};flex-shrink:0;"></span>${r.maturity}`;
+    wrap.appendChild(el);
+  });
+}
+
+function drawChart() {
+  const canvas = document.getElementById("ragoneChart");
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 40;
+  const H = Math.round(W * 0.52);
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + "px";
+  canvas.style.height = H + "px";
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top:20, right:30, bottom:60, left:70 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top  - PAD.bottom;
+
+  // Axis ranges
+  const xMin=0, xMax=1300, yMin=0, yMax=1100;
+  const xTicks=[0,200,400,600,800,1000,1200];
+  const yTicks=[0,200,400,600,800,1000];
+
+  function toX(v){ return PAD.left + (v - xMin)/(xMax - xMin)*pw; }
+  function toY(v){ return PAD.top  + ph - (v - yMin)/(yMax - yMin)*ph; }
+
+  const cs = getComputedStyle(document.documentElement);
+  const textCol  = "#5f5e5a";
+  const gridCol  = "rgba(0,0,0,0.06)";
+  const axisCol  = "rgba(0,0,0,0.15)";
+
+  // Grid lines
+  ctx.strokeStyle = gridCol;
+  ctx.lineWidth = 0.75;
+  xTicks.forEach(v => {
+    ctx.beginPath(); ctx.moveTo(toX(v), PAD.top); ctx.lineTo(toX(v), PAD.top+ph); ctx.stroke();
+  });
+  yTicks.forEach(v => {
+    ctx.beginPath(); ctx.moveTo(PAD.left, toY(v)); ctx.lineTo(PAD.left+pw, toY(v)); ctx.stroke();
+  });
+
+  // Axes
+  ctx.strokeStyle = axisCol; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(PAD.left, PAD.top+ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top+ph); ctx.lineTo(PAD.left+pw, PAD.top+ph); ctx.stroke();
+
+  // Tick labels
+  ctx.fillStyle = textCol;
+  ctx.font = `500 10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  xTicks.forEach(v => { ctx.fillText(v, toX(v), PAD.top+ph+8); });
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  yTicks.forEach(v => { ctx.fillText(v, PAD.left-8, toY(v)); });
+
+  // Axis labels
+  ctx.font = `500 11px 'Syne', sans-serif`;
+  ctx.fillStyle = "#5f5e5a";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText("Volumetric Energy Density (Wh/L)", PAD.left + pw/2, PAD.top+ph+32);
+  ctx.save();
+  ctx.translate(16, PAD.top + ph/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textBaseline = "top";
+  ctx.fillText("Gravimetric Energy Density (Wh/kg)", 0, 0);
+  ctx.restore();
+
+  // Cycle life → bubble radius mapping
+  const maxCycle = 15000;
+  function bubbleR(low, high) {
+    const mid = (low + high) / 2;
+    return 7 + (mid / maxCycle) * 18;
+  }
+
+  // Draw range bars (crosshairs) first, then bubbles
+  chemData.forEach(r => {
+    const xMid = (r.volLow  + r.volHigh)  / 2;
+    const yMid = (r.gravLow + r.gravHigh) / 2;
+    const c = matColors[r.maturity] || { fill:"#888", stroke:"#555" };
+
+    // X range bar
+    ctx.strokeStyle = c.fill + "60";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(toX(r.volLow),  toY(yMid));
+    ctx.lineTo(toX(r.volHigh), toY(yMid));
+    ctx.stroke();
+    // X end caps
+    [r.volLow, r.volHigh].forEach(xv => {
+      ctx.beginPath();
+      ctx.moveTo(toX(xv), toY(yMid)-4);
+      ctx.lineTo(toX(xv), toY(yMid)+4);
+      ctx.stroke();
+    });
+
+    // Y range bar
+    ctx.beginPath();
+    ctx.moveTo(toX(xMid), toY(r.gravLow));
+    ctx.lineTo(toX(xMid), toY(r.gravHigh));
+    ctx.stroke();
+    [r.gravLow, r.gravHigh].forEach(yv => {
+      ctx.beginPath();
+      ctx.moveTo(toX(xMid)-4, toY(yv));
+      ctx.lineTo(toX(xMid)+4, toY(yv));
+      ctx.stroke();
+    });
+  });
+
+  // Draw bubbles
+  const bubbleData = [];
+  chemData.forEach(r => {
+    const cx = toX((r.volLow + r.volHigh) / 2);
+    const cy = toY((r.gravLow + r.gravHigh) / 2);
+    const rad = bubbleR(r.cycleLow, r.cycleHigh);
+    const c = matColors[r.maturity] || { fill:"#888", stroke:"#555" };
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI*2);
+    ctx.fillStyle = c.fill + "cc";
+    ctx.fill();
+    ctx.strokeStyle = c.stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Short name label
+    const shortName = r.name.split(" ")[0].replace(/[()]/g,"");
+    ctx.fillStyle = "#1a1a18";
+    ctx.font = `500 9px 'IBM Plex Mono', monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (rad > 11) ctx.fillText(shortName, cx, cy);
+
+    bubbleData.push({ cx, cy, rad, r });
+  });
+
+  // Store for hover
+  canvas._bubbleData = bubbleData;
+  canvas._dpr = dpr;
+}
+
+function initChartHover() {
+  const canvas = document.getElementById("ragoneChart");
+  const tooltip = document.getElementById("chartTooltip");
+  if (!canvas || !tooltip) return;
+
+  canvas.addEventListener("mousemove", e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const bd = canvas._bubbleData || [];
+    let hit = null;
+    for (let i = bd.length-1; i>=0; i--) {
+      const b = bd[i];
+      const dist = Math.hypot(mx - b.cx, my - b.cy);
+      if (dist <= b.rad + 4) { hit = b; break; }
+    }
+    if (hit) {
+      const r = hit.r;
+      const cycleStr = r.cycleHigh <= 100
+        ? `<${r.cycleHigh}` : `${r.cycleLow.toLocaleString()}–${r.cycleHigh.toLocaleString()}`;
+      tooltip.innerHTML = `
+        <div style="font-family:var(--font-head);font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);">${r.name}</div>
+        <div style="color:var(--hint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">${r.maturity}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;">
+          <span style="color:var(--muted);">Grav. energy</span><span style="color:var(--text)">${r.gravLow}–${r.gravHigh} Wh/kg</span>
+          <span style="color:var(--muted);">Vol. energy</span><span style="color:var(--text)">${r.volLow}–${r.volHigh} Wh/L</span>
+          <span style="color:var(--muted);">Cycle life</span><span style="color:var(--text)">${cycleStr}</span>
+          <span style="color:var(--muted);">Voltage</span><span style="color:var(--text)">${r.voltage} V</span>
+        </div>`;
+      tooltip.style.display = "block";
+      const container = canvas.parentElement;
+      const cr = container.getBoundingClientRect();
+      let tx = e.clientX - cr.left + 14;
+      let ty = e.clientY - cr.top  - 10;
+      if (tx + 200 > cr.width) tx = e.clientX - cr.left - 200;
+      tooltip.style.left = tx + "px";
+      tooltip.style.top  = ty + "px";
+      canvas.style.cursor = "crosshair";
+    } else {
+      tooltip.style.display = "none";
+      canvas.style.cursor = "default";
+    }
+  });
+  canvas.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+}
+
+// Draw when Cell Evolution tab is shown
+const origSwitch = switchTab;
+window.switchTab = function(idx) {
+  origSwitch(idx);
+  if (idx === 1) { setTimeout(() => { buildLegend(); drawChart(); initChartHover(); }, 30); }
+};
+
+window.addEventListener("resize", () => {
+  const panel = document.getElementById("panel-1");
+  if (panel && panel.classList.contains("active")) { drawChart(); drawOCV(); }
+});
+
+// ── OCV Chart ──
+const ocvData = {
+  soc:       [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0],
+  chemistries: [
+    { name:"LFP",        color:"#1D9E75", values:[2.50,3.10,3.20,3.25,3.27,3.30,3.30,3.32,3.35,3.40,3.45] },
+    { name:"LMFP",       color:"#5DCAA5", values:[2.80,3.30,3.45,3.55,3.60,3.65,3.70,3.75,3.85,3.95,4.05] },
+    { name:"NMC",        color:"#378ADD", values:[3.00,3.40,3.55,3.65,3.70,3.75,3.80,3.90,4.00,4.10,4.20] },
+    { name:"NCA",        color:"#7F77DD", values:[3.00,3.40,3.55,3.65,3.70,3.75,3.80,3.90,4.00,4.10,4.20] },
+    { name:"LCO",        color:"#E24B4A", values:[3.00,3.50,3.60,3.70,3.75,3.80,3.85,3.95,4.05,4.15,4.20] },
+    { name:"LTO",        color:"#EF9F27", values:[1.50,1.80,2.00,2.10,2.20,2.30,2.35,2.40,2.45,2.50,2.70] },
+    { name:"NiMH",       color:"#888780", values:[1.00,1.15,1.20,1.22,1.23,1.24,1.25,1.27,1.30,1.35,1.40] },
+    { name:"Lead-Acid",  color:"#BA7517", values:[1.80,1.95,2.00,2.05,2.08,2.10,2.12,2.13,2.14,2.15,2.16] },
+    { name:"Na-ion",     color:"#534AB7", values:[2.00,2.50,2.70,2.90,3.00,3.05,3.10,3.15,3.20,3.25,3.30] }
+  ]
+};
+
+const ocvVisible = new Set(ocvData.chemistries.map(c => c.name));
+
+function buildOCVLegend() {
+  const wrap = document.getElementById("ocvLegend");
+  if (!wrap || wrap.childElementCount > 0) return;
+  wrap.innerHTML = "";
+  ocvData.chemistries.forEach(c => {
+    const el = document.createElement("div");
+    el.dataset.chem = c.name;
+    el.style.cssText = "display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;cursor:pointer;padding:4px 10px;border-radius:20px;border:0.5px solid rgba(0,0,0,0.15);transition:opacity 0.15s;";
+    el.innerHTML = `<span style="width:24px;height:3px;background:${c.color};border-radius:2px;flex-shrink:0;display:inline-block;"></span>${c.name}`;
+    el.addEventListener("click", () => {
+      if (ocvVisible.has(c.name)) { ocvVisible.delete(c.name); el.style.opacity="0.4"; }
+      else { ocvVisible.add(c.name); el.style.opacity="1"; }
+      drawOCV();
+    });
+    wrap.appendChild(el);
+  });
+}
+
+function drawOCV() {
+  const canvas = document.getElementById("ocvChart");
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 40;
+  const H = Math.round(W * 0.48);
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+"px"; canvas.style.height = H+"px";
+
+  const overlay = document.getElementById("ocvOverlay");
+  if (overlay) { overlay.width = W*dpr; overlay.height = H*dpr; overlay.style.width = W+"px"; overlay.style.height = H+"px"; }
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top:20, right:30, bottom:56, left:62 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top  - PAD.bottom;
+
+  const xMin=0, xMax=1.0, yMin=0.8, yMax=4.5;
+  const xTicks=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0];
+  const yTicks=[1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5];
+
+  function toX(v){ return PAD.left + (v-xMin)/(xMax-xMin)*pw; }
+  function toY(v){ return PAD.top  + ph - (v-yMin)/(yMax-yMin)*ph; }
+
+  const gridCol = "rgba(0,0,0,0.06)", axisCol = "rgba(0,0,0,0.15)", textCol = "#5f5e5a";
+
+  // Grid
+  ctx.lineWidth = 0.75; ctx.strokeStyle = gridCol;
+  xTicks.forEach(v => { ctx.beginPath(); ctx.moveTo(toX(v),PAD.top); ctx.lineTo(toX(v),PAD.top+ph); ctx.stroke(); });
+  yTicks.forEach(v => { ctx.beginPath(); ctx.moveTo(PAD.left,toY(v)); ctx.lineTo(PAD.left+pw,toY(v)); ctx.stroke(); });
+
+  // Axes
+  ctx.strokeStyle = axisCol; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.left,PAD.top); ctx.lineTo(PAD.left,PAD.top+ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.left,PAD.top+ph); ctx.lineTo(PAD.left+pw,PAD.top+ph); ctx.stroke();
+
+  // Tick labels
+  ctx.fillStyle = textCol; ctx.font = `500 10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  xTicks.forEach(v => { ctx.fillText((v*100).toFixed(0)+"%", toX(v), PAD.top+ph+8); });
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  yTicks.forEach(v => { ctx.fillText(v.toFixed(1), PAD.left-8, toY(v)); });
+
+  // Axis labels
+  ctx.font = `500 11px 'Syne', sans-serif`; ctx.fillStyle = textCol;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText("State of Charge (SoC)", PAD.left+pw/2, PAD.top+ph+32);
+  ctx.save(); ctx.translate(14, PAD.top+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textBaseline = "top"; ctx.fillText("OCV (V)", 0, 0); ctx.restore();
+
+  // Lines
+  ocvData.chemistries.forEach(c => {
+    if (!ocvVisible.has(c.name)) return;
+    ctx.beginPath();
+    ocvData.soc.forEach((s,i) => {
+      const x = toX(s), y = toY(c.values[i]);
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = c.color; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.stroke();
+
+    // Dots
+    ocvData.soc.forEach((s,i) => {
+      ctx.beginPath();
+      ctx.arc(toX(s), toY(c.values[i]), 3.5, 0, Math.PI*2);
+      ctx.fillStyle = c.color; ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke();
+    });
+  });
+
+  // Store layout for hover
+  canvas._ocv = { toX, toY, PAD, pw, ph, W, H };
+}
+
+function initOCVHover() {
+  const canvas = document.getElementById("ocvChart");
+  const overlay = document.getElementById("ocvOverlay");
+  const tooltip = document.getElementById("ocvTooltip");
+  if (!canvas || !tooltip || !overlay) return;
+  if (canvas._ocvHoverBound) return;
+  canvas._ocvHoverBound = true;
+
+  const container = canvas.parentElement;
+
+  canvas.addEventListener("mousemove", e => {
+    const o = canvas._ocv; if (!o) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if (mx < o.PAD.left || mx > o.PAD.left+o.pw || my < o.PAD.top || my > o.PAD.top+o.ph) {
+      tooltip.style.display = "none";
+      const oc = overlay.getContext("2d"); oc.clearRect(0,0,overlay.width,overlay.height);
+      return;
+    }
+
+    const dpr = window.devicePixelRatio||1;
+    const soc = Math.round(((mx - o.PAD.left) / o.pw) * 10) / 10;
+    const idx = Math.round(soc * 10);
+    const clampedIdx = Math.max(0, Math.min(10, idx));
+    const snapX = o.toX(ocvData.soc[clampedIdx]);
+
+    // Draw crosshair on overlay
+    const oc = overlay.getContext("2d");
+    oc.clearRect(0,0,overlay.width*dpr,overlay.height*dpr);
+    oc.save(); oc.scale(dpr,dpr);
+    oc.strokeStyle = "rgba(0,0,0,0.15)"; oc.lineWidth = 1; oc.setLineDash([4,3]);
+    oc.beginPath(); oc.moveTo(snapX, o.PAD.top); oc.lineTo(snapX, o.PAD.top+o.ph); oc.stroke();
+    oc.setLineDash([]); oc.restore();
+
+    // Tooltip content
+    const socPct = (ocvData.soc[clampedIdx]*100).toFixed(0)+"%";
+    let rows = `<div style="font-family:var(--font-head);font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text);">SoC = ${socPct}</div>`;
+    rows += `<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;">`;
+    ocvData.chemistries.forEach(c => {
+      if (!ocvVisible.has(c.name)) return;
+      rows += `<span style="display:flex;align-items:center;gap:5px;color:var(--muted);">
+        <span style="width:10px;height:3px;background:${c.color};border-radius:1px;display:inline-block;"></span>${c.name}
+      </span><span style="color:var(--text);font-weight:500;">${c.values[clampedIdx].toFixed(2)} V</span>`;
+    });
+    rows += `</div>`;
+    tooltip.innerHTML = rows;
+    tooltip.style.display = "block";
+
+    const cr = container.getBoundingClientRect();
+    let tx = e.clientX - cr.left + 16;
+    let ty = e.clientY - cr.top  - 10;
+    const tipW = 210;
+    if (tx + tipW > cr.width - 10) tx = e.clientX - cr.left - tipW - 10;
+    if (ty < 0) ty = 4;
+    tooltip.style.left = tx+"px";
+    tooltip.style.top  = ty+"px";
+  });
+
+  canvas.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+    const oc = overlay.getContext("2d");
+    oc.clearRect(0,0,overlay.width,overlay.height);
+  });
+}
+
+// Patch switchTab to also init OCV
+const _sw2 = window.switchTab;
+window.switchTab = function(idx) {
+  _sw2(idx);
+  if (idx === 1) {
+    setTimeout(() => {
+      buildLegend(); drawChart(); initChartHover();
+      buildOCVLegend(); drawOCV(); initOCVHover();
+    }, 30);
+  }
+};
+</script>
+</body>
+</html>
