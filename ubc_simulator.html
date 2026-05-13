@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generic Battery UBC Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      height: 100vh;
+    }
+
+    .sidebar {
+      background: white;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid #ddd;
+    }
+
+    .content {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    h2 {
+      margin-top: 24px;
+      font-size: 18px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 6px;
+    }
+
+    .group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #135ba1;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .metric {
+      font-size: 28px;
+      font-weight: bold;
+      margin-top: 8px;
+      color: #1976d2;
+    }
+
+    .small {
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    canvas {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 20px;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="sidebar">
+      <h1>UBC Simulator</h1>
+
+      <h2>Pack Configuration</h2>
+
+      <div class="group">
+        <label>Nominal Cell Capacity (Ah)</label>
+        <input type="number" step="0.01" id="nomCap" value="230">
+      </div>
+
+      <div class="group">
+        <label>Series Cells</label>
+        <input type="number" id="seriesCells" value="192">
+      </div>
+
+      <div class="group">
+        <label>Parallel Cells</label>
+        <input type="number" id="parallelCells" value="1">
+      </div>
+
+      <div class="group">
+        <label>Battery Packs</label>
+        <input type="number" id="nrBPs" value="3">
+      </div>
+
+      <div class="group">
+        <label>Monte Carlo ESS Runs</label>
+        <input type="number" id="nrESS" value="5000">
+      </div>
+
+      <h2>SOC Configuration</h2>
+
+      <div class="group">
+        <label>SOC Distribution</label>
+        <select id="socDistribution">
+          <option value="normal">Normal</option>
+          <option value="uniform">Uniform</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <label>Mean SOC</label>
+        <input type="number" step="0.001" id="muSOC" value="0.92">
+      </div>
+
+      <div class="group">
+        <label>SOC Sigma</label>
+        <input type="number" step="0.001" id="sigmaSOC" value="0.005">
+      </div>
+
+      <div class="group">
+        <label>SOC Spread Limit</label>
+        <input type="number" step="0.001" id="spreadLimit" value="0.015">
+      </div>
+
+      <div class="group">
+        <label>SOC High Limit</label>
+        <input type="number" step="0.01" id="socHigh" value="1.0">
+      </div>
+
+      <div class="group">
+        <label>SOC Low Limit</label>
+        <input type="number" step="0.01" id="socLow" value="0.0">
+      </div>
+
+      <div class="group">
+        <label>SOC Accuracy (subtracted from limits)</label>
+        <input type="number" step="0.001" id="socAccuracy" value="0.0">
+      </div>
+
+      <h2>Capacity Distribution</h2>
+
+      <div class="group">
+        <label>Mean Capacity (Ah)</label>
+        <input type="number" step="0.01" id="muCap" value="230">
+      </div>
+
+      <div class="group">
+        <label>Capacity Sigma (Ah)</label>
+        <input type="number" step="0.01" id="sigmaCap" value="1.06">
+      </div>
+
+      <div class="group">
+        <label>Minimum Capacity (Ah)</label>
+        <input type="number" step="0.01" id="capMin" value="225">
+      </div>
+
+      <div class="group">
+        <label>Maximum Capacity (Ah)</label>
+        <input type="number" step="0.01" id="capMax" value="235">
+      </div>
+
+      <h2>OCV Curve</h2>
+
+      <div class="group">
+        <label>SOC Points (comma separated)</label>
+        <textarea id="socPoints" rows="3">0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0</textarea>
+      </div>
+
+      <div class="group">
+        <label>Charge OCV (comma separated)</label>
+        <textarea id="chargeOCV" rows="3">2.8,3.1,3.2,3.25,3.28,3.30,3.32,3.34,3.36,3.39,3.42</textarea>
+      </div>
+
+      <div class="group">
+        <label>Discharge OCV (comma separated)</label>
+        <textarea id="dischargeOCV" rows="3">2.7,3.0,3.15,3.22,3.26,3.28,3.30,3.32,3.34,3.36,3.39</textarea>
+      </div>
+
+      <button onclick="runSimulation()">Run Simulation</button>
+    </div>
+
+    <div class="content">
+
+      <div class="results">
+
+        <div class="card">
+          <div>Nominal Capacity</div>
+          <div class="metric" id="cardNomCap">-</div>
+          <div class="small">User-specified cell nominal Ah</div>
+        </div>
+
+        <div class="card">
+          <div>Traditional Multi-Pack UBC</div>
+          <div class="metric" id="cardTradMulti">-</div>
+          <div class="small">Avg(min cell cap per BP) × SOC range</div>
+        </div>
+
+        <div class="card">
+          <div>True Multi-Pack UBC</div>
+          <div class="metric" id="cardTrueMulti">-</div>
+          <div class="small">Monte Carlo avg, with SOC spread &amp; voltage balancing</div>
+        </div>
+
+        <div class="card">
+          <div>Expected UBE</div>
+          <div class="metric" id="cardUBE">-</div>
+          <div class="small">True UBC × Series Cells × nrBPs × Parallel Cells × OCV@50% SOC</div>
+        </div>
+
+      </div>
+
+      <canvas id="ubcChart"></canvas>
+      <canvas id="socHighChart"></canvas>
+      <canvas id="socLowChart"></canvas>
+      <canvas id="dropChart"></canvas>
+
+    </div>
+  </div>
+
+  <script>
+
+    // chart registry — keyed by canvas id
+    const charts = {};
+
+    function randn_bm() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function clip(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function generateNormal(mu, sigma) {
+      return mu + sigma * randn_bm();
+    }
+
+    function parseArray(id) {
+      return document.getElementById(id)
+        .value
+        .split(',')
+        .map(v => parseFloat(v.trim()));
+    }
+
+    function interp1(x, y, xq) {
+
+      if (xq <= x[0]) return y[0];
+      if (xq >= x[x.length - 1]) return y[y.length - 1];
+
+      for (let i = 0; i < x.length - 1; i++) {
+
+        if (xq >= x[i] && xq <= x[i + 1]) {
+
+          const t = (xq - x[i]) / (x[i + 1] - x[i]);
+          return y[i] + t * (y[i + 1] - y[i]);
+        }
+      }
+
+      return y[0];
+    }
+
+    function percentile(arr, p) {
+      const sorted = [...arr].sort((a, b) => a - b);
+      const idx = (p / 100) * (sorted.length - 1);
+      const lo = Math.floor(idx);
+      const hi = Math.ceil(idx);
+      if (lo === hi) return sorted[lo];
+      return sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
+    }
+
+    // ─── mean of a plain JS array ───────────────────────────────
+    function arrMean(a) {
+      let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s / a.length;
+    }
+
+    // ─── build inverse-lookup (v→soc) from a soc→voltage table ─
+    // sorts by voltage so interp1 works correctly even if input is descending
+    function buildInverse(socPts, voltPts) {
+      const pairs = socPts.map((s, i) => [voltPts[i], s]);
+      pairs.sort((a, b) => a[0] - b[0]);
+      return {
+        xs: pairs.map(p => p[0]),
+        ys: pairs.map(p => p[1])
+      };
+    }
+
+    function runSimulation() {
+
+      // ── inputs ────────────────────────────────────────────────
+      const seriesCells   = parseInt(document.getElementById('seriesCells').value);
+      const parallelCells = parseInt(document.getElementById('parallelCells').value);
+      const nrBPs         = parseInt(document.getElementById('nrBPs').value);
+      const nrESS         = parseInt(document.getElementById('nrESS').value);
+      const muSOC         = parseFloat(document.getElementById('muSOC').value);
+      const sigmaSOC      = parseFloat(document.getElementById('sigmaSOC').value);
+      const spreadLimit   = parseFloat(document.getElementById('spreadLimit').value);
+      const socAccuracy   = parseFloat(document.getElementById('socAccuracy').value) || 0;
+      let socHigh         = parseFloat(document.getElementById('socHigh').value);
+      let socLow          = parseFloat(document.getElementById('socLow').value);
+
+      // Apply SOC accuracy offset (matches Python: SOCHigh -= acc, SOCLow += acc)
+      socHigh -= socAccuracy;
+      socLow  += socAccuracy;
+      const muCap         = parseFloat(document.getElementById('muCap').value);
+      const sigmaCap      = parseFloat(document.getElementById('sigmaCap').value);
+      const capMin        = parseFloat(document.getElementById('capMin').value);
+      const capMax        = parseFloat(document.getElementById('capMax').value);
+      const socDist       = document.getElementById('socDistribution').value;
+      const socPts        = parseArray('socPoints');
+      const chgOCV        = parseArray('chargeOCV');
+      const dchOCV        = parseArray('dischargeOCV');
+
+      // ── OCV lookup helpers ────────────────────────────────────
+      const soc2chg  = soc => interp1(socPts, chgOCV, soc);
+      const soc2dch  = soc => interp1(socPts, dchOCV, soc);
+      const invChg   = buildInverse(socPts, chgOCV);
+      const invDch   = buildInverse(socPts, dchOCV);
+      const chg2soc  = v   => interp1(invChg.xs, invChg.ys, v);
+      const dch2soc  = v   => interp1(invDch.xs, invDch.ys, v);
+
+      // ── result accumulators ───────────────────────────────────
+      // true multi-pack UBC per ESS
+      const ubcTrueVect     = new Array(nrESS);
+      // single-pack UBC with SOC spread (before low-side voltage balance)
+      const ubcSingleVect   = new Array(nrESS);
+      // traditional UBC single-pack no SOC spread  (min cap × SOC range, BP 0)
+      const ubcTradSingle   = new Array(nrESS);
+      // traditional UBC multi-pack no SOC spread   (avg of min cap per BP × SOC range)
+      const ubcTradMulti    = new Array(nrESS);
+
+      // histogram samples — collected from ESS run 0 only
+      const cellCapSamples = [];
+      const socHighSamples = [];
+      const socLowSamples  = [];
+
+      for (let ess = 0; ess < nrESS; ess++) {
+
+        // ── STEP 1: generate cap[bp][cell] and rawSOC[bp][cell] ──
+        const cap    = [];
+        const rawSOC = [];
+
+        for (let bp = 0; bp < nrBPs; bp++) {
+          const capRow = new Float64Array(seriesCells);
+          const socRow = new Float64Array(seriesCells);
+          for (let c = 0; c < seriesCells; c++) {
+            // capacity
+            capRow[c] = clip(muCap + sigmaCap * randn_bm(), capMin, capMax);
+            // SOC
+            let s;
+            if (socDist === 'normal') {
+              s = muSOC + sigmaSOC * randn_bm();
+            } else {
+              s = muSOC + (Math.random() - 0.5) * spreadLimit;
+            }
+            // clip to spread window (same as Python)
+            socRow[c] = clip(s, muSOC - spreadLimit / 2, muSOC + spreadLimit / 2);
+          }
+          cap.push(capRow);
+          rawSOC.push(socRow);
+        }
+
+        // ── STEP 2: global SOC clip ───────────────────────────────
+        // Python: SOCHighTemp = max over all cells; clip each to [SOCHighTemp-spread, SOCHighTemp]
+        let socHighTemp = -Infinity;
+        for (let bp = 0; bp < nrBPs; bp++)
+          for (let c = 0; c < seriesCells; c++)
+            if (rawSOC[bp][c] > socHighTemp) socHighTemp = rawSOC[bp][c];
+
+        const dataSOC = rawSOC.map(row =>
+          row.map(s => clip(s, socHighTemp - spreadLimit, socHighTemp))
+        );
+
+        // ── STEP 3: top-align per pack ────────────────────────────
+        // shift each pack so its highest-SOC cell lands exactly at socHigh
+        const socAdj = dataSOC.map(row => {
+          let maxS = -Infinity;
+          for (let c = 0; c < seriesCells; c++) if (row[c] > maxS) maxS = row[c];
+          const shift = socHigh - maxS;
+          return row.map(s => s + shift);
+        });
+
+        // ── STEP 4: high-SOC voltage balance (2 iterations) ──────
+        // Track Ah removed per BP per iteration to compute UBCFromAllatSOCHightoAllatSOHLow
+        let socH = socAdj.map(r => Float64Array.from(r));
+        const capToDischarge = new Float64Array(nrBPs); // total Ah removed per BP across both iters
+
+        for (let iter = 0; iter < 2; iter++) {
+          const packV = socH.map(row => {
+            let v = 0; for (let c = 0; c < seriesCells; c++) v += soc2chg(row[c]); return v;
+          });
+          let minPackV = Infinity;
+          for (let bp = 0; bp < nrBPs; bp++) if (packV[bp] < minPackV) minPackV = packV[bp];
+
+          const refSOC = chg2soc(minPackV / seriesCells);
+
+          for (let bp = 0; bp < nrBPs; bp++) {
+            const thisSOC = chg2soc(packV[bp] / seriesCells);
+            const socDelta = thisSOC - refSOC;
+            if (socDelta <= 0) continue;
+            let sumCap = 0;
+            for (let c = 0; c < seriesCells; c++) sumCap += cap[bp][c];
+            const avgCap = sumCap / seriesCells;
+            const ahToRemove = socDelta * avgCap;
+            capToDischarge[bp] += ahToRemove;  // accumulate across both iterations
+            for (let c = 0; c < seriesCells; c++) {
+              socH[bp][c] -= ahToRemove / cap[bp][c];
+            }
+          }
+        }
+
+        // ── STEP 5: discharge each pack to its weakest cell ───────
+        // min stored Ah per pack = min over cells of cap*(soc - socLow)
+        const minStoredAh = socH.map((row, bp) => {
+          let mn = Infinity;
+          for (let c = 0; c < seriesCells; c++) {
+            const ah = cap[bp][c] * (row[c] - socLow);
+            if (ah < mn) mn = ah;
+          }
+          return mn;
+        });
+
+        // SOC after discharging each pack by its limiting cell
+        const socDis = socH.map((row, bp) =>
+          row.map((s, c) => s - minStoredAh[bp] / cap[bp][c])
+        );
+
+        // ── STEP 6: low-SOC voltage balance (2 iterations) ───────
+        // Packs with LOWER discharge voltage than the max are "deeper" discharged.
+        // They must be charged back up (bottom SOC raised) by removing Ah from usable.
+        // Python: capToCharge = SOCmindelta * avgCap  (negative for low-voltage packs)
+        //         socLowerSide = socDischarged - capToCharge/cap
+        //         capToCharge negative → subtracting raises SOC (bottom moves up = less usable)
+        let socL = socDis.map(r => Float64Array.from(r));
+
+        for (let iter = 0; iter < 2; iter++) {
+          const packVLow = socL.map(row => {
+            let v = 0; for (let c = 0; c < seriesCells; c++) v += soc2dch(row[c]); return v;
+          });
+          let maxPackVLow = -Infinity;
+          for (let bp = 0; bp < nrBPs; bp++) if (packVLow[bp] > maxPackVLow) maxPackVLow = packVLow[bp];
+
+          const refSOCLow = dch2soc(maxPackVLow / seriesCells);
+
+          for (let bp = 0; bp < nrBPs; bp++) {
+            const thisSOCLow = dch2soc(packVLow[bp] / seriesCells);
+            const socDelta = thisSOCLow - refSOCLow; // negative for packs below max voltage
+            if (socDelta >= 0) continue;             // skip pack already at max voltage
+            let sumCap = 0;
+            for (let c = 0; c < seriesCells; c++) sumCap += cap[bp][c];
+            const avgCap = sumCap / seriesCells;
+            // capToCharge = socDelta * avgCap  (negative)
+            // socL -= capToCharge/cap = socL -= (socDelta*avgCap)/cap
+            // socDelta is negative → capToCharge negative → subtracting raises socL
+            const capToCharge = socDelta * avgCap; // negative
+            for (let c = 0; c < seriesCells; c++) {
+              socL[bp][c] -= capToCharge / cap[bp][c]; // raises socL (bottom moves up)
+            }
+          }
+        }
+
+        // ── STEP 7: true multi-pack UBC ───────────────────────────
+        // Python: deltaAhLogCell = (socH - socL) * cap; min per pack; sum / nrBPs
+        let essUBCTrue = 0;
+        for (let bp = 0; bp < nrBPs; bp++) {
+          let minAh = Infinity;
+          for (let c = 0; c < seriesCells; c++) {
+            const ah = (socH[bp][c] - socL[bp][c]) * cap[bp][c];
+            if (ah < minAh) minAh = ah;
+          }
+          essUBCTrue += minAh;
+        }
+        ubcTrueVect[ess] = essUBCTrue / nrBPs;
+
+        // ── STEP 8: UBCFromAllatSOCHightoAllatSOHLow (single-pack w/ SOC spread) ──
+        // Python: mean over BPs of (minimumstoredcellUBCAh + capToDischarge_iter1 + capToDischarge_iter2)
+        // capToDischarge[bp] = total Ah removed at top during high-SOC voltage balance
+        let singleSum = 0;
+        for (let bp = 0; bp < nrBPs; bp++) {
+          singleSum += minStoredAh[bp] + capToDischarge[bp];
+        }
+        ubcSingleVect[ess] = singleSum / nrBPs;
+
+        // ── STEP 9: traditional UBC (no SOC spread) ───────────────
+        // Trad single-pack (Python: tradExpectedUBCPerBPAvgAhVect):
+        //   (SOCHigh-SOCLow) * min cell cap in BP 0 only
+        let minCap0 = Infinity;
+        for (let c = 0; c < seriesCells; c++) if (cap[0][c] < minCap0) minCap0 = cap[0][c];
+        ubcTradSingle[ess] = (socHigh - socLow) * minCap0;
+
+        // Trad multi-pack (Python: tradExpectedUBCPerBPAvgAhVectMultiPack):
+        //   sum over all BPs of (SOCHigh-SOCLow * min cell cap per BP) / nrBPs
+        //   = AVERAGE of per-BP min, NOT min of mins
+        let tradMultiSum = 0;
+        for (let bp = 0; bp < nrBPs; bp++) {
+          let mn = Infinity;
+          for (let c = 0; c < seriesCells; c++) if (cap[bp][c] < mn) mn = cap[bp][c];
+          tradMultiSum += (socHigh - socLow) * mn;
+        }
+        ubcTradMulti[ess] = tradMultiSum / nrBPs;
+
+        // ── STEP 10: histogram samples ────────────────────────────
+        // Python uses dataCap.ravel() = all cells × all BPs × all ESS
+        // We cap at 50k total cell samples to avoid memory issues
+        const maxCellSamples = 50000;
+        const cellsPerEss = nrBPs * seriesCells;
+        if (cellCapSamples.length < maxCellSamples) {
+          for (let bp = 0; bp < nrBPs; bp++) {
+            for (let c = 0; c < seriesCells; c++) {
+              cellCapSamples.push(cap[bp][c]);
+            }
+          }
+        }
+        // SOC high/low from first ESS only (for the SOC distribution plots)
+        if (ess === 0) {
+          for (let bp = 0; bp < nrBPs; bp++) {
+            for (let c = 0; c < seriesCells; c++) {
+              socHighSamples.push(socH[bp][c] * 100);
+              socLowSamples.push(socL[bp][c] * 100);
+            }
+          }
+        }
+      }
+
+      const nomCap       = parseFloat(document.getElementById('nomCap').value);
+      const avgTrueUBC   = arrMean(ubcTrueVect);
+      const avgTradMulti = arrMean(ubcTradMulti);
+
+      // Expected UBE = True Multi UBC × seriesCells × avg OCV at 50% SOC
+      // avg OCV = (chargeOCV@0.5 + dischargeOCV@0.5) / 2
+      const chgOCV50 = interp1(socPts, chgOCV, 0.5);
+      const dchOCV50 = interp1(socPts, dchOCV, 0.5);
+      const avgOCV50 = (chgOCV50 + dchOCV50) / 2;
+      const expectedUBE = avgTrueUBC * seriesCells * avgOCV50 * nrBPs * parallelCells;
+
+      // voltage-balance loss (kept for plot 4)
+      const lossArr    = ubcSingleVect.map((s, i) => s - ubcTrueVect[i]);
+      const avgTradSingle = arrMean(ubcTradSingle);
+
+      // drop % — Method 1 & 2 (for drop chart)
+      const method1Drop = lossArr.map(l => 100 * l / avgTradMulti);
+      const method2Drop = ubcTrueVect.map((u, i) =>
+        100 * (ubcSingleVect[i] - u) / ubcSingleVect[i]
+      );
+
+      // ── update 4 metric cards ─────────────────────────────────
+      document.getElementById('cardNomCap').innerHTML    = nomCap.toFixed(1) + ' Ah';
+      document.getElementById('cardTradMulti').innerHTML = avgTradMulti.toFixed(2) + ' Ah';
+      document.getElementById('cardTrueMulti').innerHTML = avgTrueUBC.toFixed(2) + ' Ah';
+      document.getElementById('cardUBE').innerHTML       = (expectedUBE / 1000).toFixed(2) + ' kWh'
+        + '<span style="font-size:13px;color:#666;margin-left:6px;">(' + avgOCV50.toFixed(3) + ' V/cell avg)</span>';
+
+      // ── Plot 1: 5-distribution capacity chart (Python Figure 1) ─
+
+      // Gaussian bell curve for cell cap distribution (analytical, on cell axis)
+      // Evaluated at 200 points across the full x range for smoothness
+      const bellPoints = 200;
+      const bellMin = muCap - 5 * sigmaCap;
+      const bellMax = muCap + 5 * sigmaCap;
+      const bellXs  = Array.from({length: bellPoints}, (_, i) => bellMin + i * (bellMax - bellMin) / (bellPoints - 1));
+      const bellYs  = bellXs.map(x => {
+        const z = (x - muCap) / sigmaCap;
+        return Math.exp(-0.5 * z * z) / (sigmaCap * Math.sqrt(2 * Math.PI));
+      });
+
+      createMultiHistChart('ubcChart', [
+        { label: 'Cell Cap Distribution',                              data: cellCapSamples, color: '#888888', yAxis: 'cell' },
+        { label: 'Trad. Single-Pack UBC (no SOC spread)',              data: ubcTradSingle,  color: '#fb8c00', yAxis: 'ess'  },
+        { label: `Trad. Multi-Pack UBC / ${nrBPs}BPs (no SOC spread)`,data: ubcTradMulti,   color: '#43a047', yAxis: 'ess'  },
+        { label: 'Single-Pack UBC (with SOC spread)',                  data: ubcSingleVect,  color: '#1976d2', yAxis: 'ess'  },
+        { label: `True Multi-Pack UBC / ${nrBPs}BPs (w/ SOC spread)`, data: ubcTrueVect,    color: '#e53935', yAxis: 'ess'  },
+      ],
+      `Capacity Distributions — ${nrBPs} BP System`,
+      'Capacity [Ah]',
+      [],
+      { bellXs, bellYs, bellColor: '#555555', bellLabel: 'Cell Cap Gaussian fit' },
+      200);
+
+      // ── Plot 2: SOC at high SOC after top-balance (cell level) ──
+      createMultiHistChart('socHighChart',
+        [{ label: 'Cell SOC after top-balance (ESS #0)', data: socHighSamples, color: '#1976d2', yAxis: 'cell' }],
+        'Cell SOC at High SOC (after top-balance)', 'SOC [%]', [], null, 80);
+
+      // ── Plot 3: SOC at low SOC after bottom-balance (cell level) ─
+      createMultiHistChart('socLowChart',
+        [{ label: 'Cell SOC after bottom-balance (ESS #0)', data: socLowSamples, color: '#e53935', yAxis: 'cell' }],
+        'Cell SOC at Low SOC (after bottom-balance)', 'SOC [%]', [], null, 80);
+
+      // ── Plot 4: UBC drop % (Python Figure 3) ──────────────────
+      createMultiHistChart('dropChart', [
+        { label: 'Method 1: Loss / avg(trad multi UBC)',  data: method1Drop, color: '#1976d2', yAxis: 'ess' },
+        { label: 'Method 2: (Single−True) / Single [%]', data: method2Drop, color: '#e53935', yAxis: 'ess' },
+      ],
+      'UBC Drop due to Multi-Pack Voltage Balancing [%]',
+      'UBC Drop [%]',
+      [], null, 80);
+    }
+
+    // Safe min/max — Math.min/max(...largeArray) overflows the call stack
+    function arrayMin(data) {
+      let m = Infinity;
+      for (let i = 0; i < data.length; i++) if (data[i] < m) m = data[i];
+      return m;
+    }
+    function arrayMax(data) {
+      let m = -Infinity;
+      for (let i = 0; i < data.length; i++) if (data[i] > m) m = data[i];
+      return m;
+    }
+
+    function histogram(data, bins = 30) {
+
+      const min = arrayMin(data);
+      const max = arrayMax(data);
+      const width = (max - min) / bins;
+
+      let counts = new Array(bins).fill(0);
+      let labels = [];
+
+      for (let i = 0; i < bins; i++) {
+        labels.push((min + i * width).toFixed(2));
+      }
+
+      data.forEach(v => {
+
+        let idx = Math.floor((v - min) / width);
+
+        if (idx >= bins) idx = bins - 1;
+        if (idx < 0) idx = 0;
+
+        counts[idx]++;
+      });
+
+      const total = data.length;
+      const pdf = counts.map(c => c / (total * width));
+
+      return { labels, pdf };
+    }
+
+    // ─── hex colour → rgba helper ────────────────────────────────
+    function hexAlpha(hex, a) {
+      const r = parseInt(hex.slice(1,3),16);
+      const g = parseInt(hex.slice(3,5),16);
+      const b = parseInt(hex.slice(5,7),16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    // ─── compute histogram counts & PDF on a shared axis ─────────
+    function histOnSharedAxis(data, globalMin, binWidth, BINS) {
+      const counts = new Array(BINS).fill(0);
+      for (let i = 0; i < data.length; i++) {
+        let idx = Math.floor((data[i] - globalMin) / binWidth);
+        if (idx >= BINS) idx = BINS - 1;
+        if (idx < 0)    idx = 0;
+        counts[idx]++;
+      }
+      const total = data.length;
+      return {
+        counts,
+        pdf: counts.map(c => binWidth > 0 ? c / (total * binWidth) : 0)
+      };
+    }
+
+    // ─── unified chart builder ────────────────────────────────────
+    // datasets: [{label, data, color, yAxis}]
+    //   yAxis = 'ess'  → left  primary   axis  (PDF — ESS distributions)
+    //   yAxis = 'cell' → right secondary axis  (PDF — Cell distribution)
+    // vlines: [{value, color, label}]
+    // bell:   {bellXs, bellYs, bellColor, bellLabel}  — optional Gaussian overlay
+    // bins:   number of histogram bins (default 50)
+    function createMultiHistChart(canvasId, datasets, title, xlabel, vlines, bell, bins) {
+
+      if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
+
+      const BINS = bins || 50;
+
+      // shared x-axis extent across all datasets
+      let globalMin = Infinity, globalMax = -Infinity;
+      datasets.forEach(d => {
+        const mn = arrayMin(d.data), mx = arrayMax(d.data);
+        if (mn < globalMin) globalMin = mn;
+        if (mx > globalMax) globalMax = mx;
+      });
+      const binWidth = (globalMax - globalMin) / BINS || 1;
+
+      const labels = Array.from({ length: BINS }, (_, i) =>
+        (globalMin + (i + 0.5) * binWidth).toFixed(3));
+
+      // build bar datasets
+      const chartDatasets = datasets.map(d => {
+        const { pdf } = histOnSharedAxis(d.data, globalMin, binWidth, BINS);
+        const axisId = d.yAxis === 'cell' ? 'yCell' : 'yESS';
+        return {
+          type: 'bar',
+          label: d.label,
+          data: pdf,
+          yAxisID: axisId,
+          backgroundColor: hexAlpha(d.color, 0.55),
+          borderColor:     hexAlpha(d.color, 0.85),
+          borderWidth: 1,
+          barPercentage: 1.0,
+          categoryPercentage: 1.0,
+        };
+      });
+
+      // bell curve overlay — interpolated onto the shared bin centres, on yCell axis
+      if (bell && bell.bellXs && bell.bellXs.length > 0) {
+        const bellOnBins = labels.map(l => {
+          const xq = parseFloat(l);
+          // linear interpolation of the provided bell curve at this bin centre
+          const xs = bell.bellXs, ys = bell.bellYs;
+          if (xq <= xs[0]) return ys[0];
+          if (xq >= xs[xs.length - 1]) return ys[xs.length - 1];
+          for (let i = 0; i < xs.length - 1; i++) {
+            if (xq >= xs[i] && xq <= xs[i + 1]) {
+              const t = (xq - xs[i]) / (xs[i + 1] - xs[i]);
+              return ys[i] + t * (ys[i + 1] - ys[i]);
+            }
+          }
+          return 0;
+        });
+        chartDatasets.push({
+          type: 'line',
+          label: bell.bellLabel || 'Gaussian fit',
+          data: bellOnBins,
+          yAxisID: 'yCell',
+          borderColor: bell.bellColor || '#333',
+          borderWidth: 2.5,
+          borderDash: [],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+        });
+      }
+
+      // vertical marker lines — height = max PDF across all real datasets so they
+      // never blow out the y-axis scale
+      if ((vlines || []).length > 0) {
+        let maxPDF = 0;
+        chartDatasets.forEach(ds => {
+          ds.data.forEach(v => { if (v != null && v > maxPDF) maxPDF = v; });
+        });
+        const lineHeight = maxPDF > 0 ? maxPDF : 1;
+
+        vlines.forEach(vl => {
+          // build a two-point vertical segment: [0, lineHeight] at the closest bin
+          const spikeData = labels.map(l =>
+            Math.abs(parseFloat(l) - vl.value) < binWidth ? lineHeight : null
+          );
+          chartDatasets.push({
+            type: 'line',
+            label: vl.label,
+            data: spikeData,
+            yAxisID: 'yESS',
+            borderColor: vl.color,
+            borderWidth: 2,
+            borderDash: [6, 3],
+            pointRadius: 0,
+            fill: false,
+            spanGaps: false,
+          });
+        });
+      }
+
+      // determine if any dataset is on the cell axis
+      const hasCellAxis = datasets.some(d => d.yAxis === 'cell') || !!bell;
+
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      charts[canvasId] = new Chart(ctx, {
+        data: { labels, datasets: chartDatasets },
+        options: {
+          responsive: true,
+          animation: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            title:  { display: true, text: title, font: { size: 13 } },
+            legend: { display: true, labels: { boxWidth: 12, font: { size: 11 } } },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: xlabel },
+              ticks: { maxTicksLimit: 18, font: { size: 10 } },
+              grid:  { display: false },
+            },
+            yESS: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: 'PDF — ESS distributions', color: '#1976d2' },
+              ticks: { color: '#1976d2' },
+              grid:  { drawOnChartArea: true },
+            },
+            ...(hasCellAxis ? {
+              yCell: {
+                type: 'linear',
+                position: 'right',
+                title: { display: true, text: 'PDF — Cell distribution', color: '#888' },
+                ticks: { color: '#888' },
+                grid:  { drawOnChartArea: false },
+              }
+            } : {}),
+          }
+        }
+      });
+    }
+
+    runSimulation();
+
+  </script>
+</body>
+</html>
